@@ -2,10 +2,10 @@
 #include <Adafruit_VL53L0X.h>
 #include <Wire.h>
 
-/* Need to change out A sensor for a more accurate one and then can work on 
+/* 
+Need to change out A sensor for a more accurate one and then can work on 
 the deadspace generalization and add that into the if loop that will tell the robot 
 to not get any closer to the wall. This will save us from rubbing and setting us off track!!!
-
 */
 
 // Declare the Two Sensors
@@ -29,7 +29,7 @@ const uint8_t ADDR_D = 0x33;
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial) delay(10);
+  while (!Serial) delay(1);
 
   // I2C pins
   Wire.setSDA(12);
@@ -90,10 +90,10 @@ void setup() {
   Serial.println("All Sensors Online");
 
     // Set timing to increase the accuracy by lowering standard deviation of measurements
-  loxA.setMeasurementTimingBudgetMicroSeconds(200000);
-  loxB.setMeasurementTimingBudgetMicroSeconds(200000);
-  loxC.setMeasurementTimingBudgetMicroSeconds(200000);
-  loxD.setMeasurementTimingBudgetMicroSeconds(200000);
+  loxA.setMeasurementTimingBudgetMicroSeconds(150000);
+  loxB.setMeasurementTimingBudgetMicroSeconds(150000);
+  loxC.setMeasurementTimingBudgetMicroSeconds(150000);
+  loxD.setMeasurementTimingBudgetMicroSeconds(150000);
 
 } // end void setup
 
