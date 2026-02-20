@@ -6,8 +6,12 @@
 Need to change out A sensor for a more accurate one and then can work on 
 the deadspace generalization and add that into the if loop that will tell the robot 
 to not get any closer to the wall. This will save us from rubbing and setting us off track!!!
+
+Add feature that disregards data beyond ~2m
+
 */
 
+///////////////////////////////////////////////////////////////////////////////////////////
 // Declare the Two Sensors
 Adafruit_VL53L0X loxA = Adafruit_VL53L0X(); // Leftmost sensor
 Adafruit_VL53L0X loxB = Adafruit_VL53L0X(); // Second leftmost sensor
@@ -27,9 +31,16 @@ const uint8_t ADDR_B = 0x31;
 const uint8_t ADDR_C = 0x32;
 const uint8_t ADDR_D = 0x33;
 
+// // A calibration ------- UNCOMMENT IF NEEDED TO USE CALIBRATED A DATA
+// const float A_M = 0.987454f;
+// const float A_B = 0.455201f;
+// const float MM_TO_IN = 0.03937007874f;
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
 void setup() {
   Serial.begin(115200);
-  while (!Serial) delay(1);
+  while (!Serial) delay(10);
 
   // I2C pins
   Wire.setSDA(12);
@@ -89,14 +100,15 @@ void setup() {
   // Serial.println("Both Sensors initialized");
   Serial.println("All Sensors Online");
 
-    // Set timing to increase the accuracy by lowering standard deviation of measurements
-  loxA.setMeasurementTimingBudgetMicroSeconds(150000);
-  loxB.setMeasurementTimingBudgetMicroSeconds(150000);
-  loxC.setMeasurementTimingBudgetMicroSeconds(150000);
-  loxD.setMeasurementTimingBudgetMicroSeconds(150000);
+  // Set timing to increase the accuracy by lowering standard deviation of measurements
+  loxA.setMeasurementTimingBudgetMicroSeconds(200000);
+  loxB.setMeasurementTimingBudgetMicroSeconds(200000);
+  loxC.setMeasurementTimingBudgetMicroSeconds(200000);
+  loxD.setMeasurementTimingBudgetMicroSeconds(200000);
 
 } // end void setup
 
+/////////////////////////////////////////////////////////////////////////////////////
 void loop() {
 
   VL53L0X_RangingMeasurementData_t measureA;
@@ -106,20 +118,34 @@ void loop() {
 
   // Begin measuring
   loxA.rangingTest(&measureA, false); // false = boolean debug
+  delay(20);
   loxB.rangingTest(&measureB, false);
+  delay(20);
   loxC.rangingTest(&measureC, false);
+  delay(20);
   loxD.rangingTest(&measureD, false);
+  delay(20);
 
-  // A Measurement & Serial Print
-  Serial.print("A: ");
+  // if (measureA.RangeStatus != 4) { ------- UNCOMMENT IF NEEDED TO USE CALIBRATED A DATA
+  //   float mmA = measureA.RangeMilliMeter * MM_TO_IN;
+  //   float A_corr = A_M * mmA + A_B;
+  //   Serial.print("A: ");
+  //   Serial.print(A_corr, 2);
+  //   Serial.print(" in");
+  // } else {
+  //   Serial.print("A: O.O.R");
+  // }
+
+  Serial.print(" | A: ");
   if (measureA.RangeStatus != 4) {
-    float mmA = measureA.RangeMilliMeter; // GO TO HARRIS TO GET ANOTHER SENSOR!!!
+    float mmA = measureB.RangeMilliMeter;
     float inA = mmA * 0.0393701;
     Serial.print(inA);
     Serial.print(" in");
   } else {
-    Serial.print("Out of range");
+    Serial.print("O.O.R");
   }
+
   // B Measurement & Serial Print
   Serial.print(" | B: ");
   if (measureB.RangeStatus != 4) {
@@ -128,7 +154,7 @@ void loop() {
     Serial.print(inB);
     Serial.print(" in");
   } else {
-    Serial.print("Out of range");
+    Serial.print("O.O.R");
   }
     // C Measurement & Serial Print
   Serial.print(" | C: ");
@@ -138,7 +164,7 @@ void loop() {
     Serial.print(inC);
     Serial.print(" in");
   } else {
-    Serial.print("Out of range");
+    Serial.print("O.O.R");
   }
     // D Measurement & Serial Print
   Serial.print(" | D: ");
@@ -148,7 +174,7 @@ void loop() {
     Serial.print(inD);
     Serial.print(" in");
   } else {
-    Serial.print("Out of range");
+    Serial.print("O.O.R");
   }
 
   Serial.println();
