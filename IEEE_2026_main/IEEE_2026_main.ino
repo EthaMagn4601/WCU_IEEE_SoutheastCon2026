@@ -2,8 +2,6 @@
 // DO NOT USE PINS 7 OR 8 — GPIO DRIVE ISSUES ON PICO !!
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-// Testing for leon
-
 // ================= Encoder pins =================
 #define ENCODER_PIN_A 2
 #define ENCODER_PIN_B 3
