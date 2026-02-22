@@ -2,14 +2,18 @@
 // DO NOT USE PINS 7 OR 8 — GPIO DRIVE ISSUES ON PICO !!
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+// ================= BNO055 pins =================
+// SDA = GPIO4
+// SCL = GPIO5
+
 // ================= Encoder pins =================
 #define ENCODER_PIN_A 2
 #define ENCODER_PIN_B 3
 
 // ================= Motor control pins =================
 // Motor 1 (Front Right)
-#define MOTOR_IN1 4
-#define MOTOR_IN2 5
+#define MOTOR_IN1 7
+#define MOTOR_IN2 8
 
 // Motor 2 (Back Right)
 #define MOTOR_IN3 12
@@ -32,7 +36,6 @@ const unsigned long PRINT_INTERVAL_MS = 200;  // 5 Hz print rate
 volatile int32_t encoder_pos = 0;
 
 // For an encoder count of 629 positions, the robot moved 13.25 in.
-
 #define ENC_POS_PER_INCH 47.4716981132f  
 
 // ================= Encoder Interrupt =================
@@ -162,23 +165,13 @@ void loop() {
 //   }
 // }
 // I'm changing this to do things
-  motors_strafe_right();
-  delay(2000);
 
+  motors_forward();
+  delay(500);
   motors_stop();
-  delay(1000);
+  while(true){
 
-  motors_reverse();
-  delay(1000);
-  motors_strafe_right();
-  delay(250);
-  motors_reverse();
-  delay(1000);
-  motors_strafe_right();
-  delay(250);
-  motors_reverse();
-  delay(1000);
+    delay(500);
+  }
 
-  motors_stop();
-  delay(10000);
 }
