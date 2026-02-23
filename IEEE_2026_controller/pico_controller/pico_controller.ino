@@ -6,9 +6,6 @@
 * that structure the individual commands to move in eight motions. Keywords are going to be 
 * sent over SPI to pass the data, but Leon is still figuring that out. 
 *
-* Need to have WASD, and strafe controls. Either full off or full on. probably need a margin of error for both.
-*
-*
 * Idea for certain commands:
 *
 * Create if statements for storing information to variable that could send data. The if statements will be 
@@ -23,25 +20,26 @@ const int btnA = 22; // joystick button
 const int btnB = 21; // green button
 const int btnC = 20; // black button
 const int btnD = 19; // blue button
-
+const int btnE = 17; // tiny switch 1
+const int btnF = 16; // tiny switch 2
 
 // Variables for store values
 int valX = 0;
 int valY = 0; 
-
 //////////////////////////////////////////////////////////////////////////////////////////
 // MOTOR DIRECTION FUNCTIONS
-
 struct Buttons {         
   bool A; // inverted button logic
   bool B; 
   bool C;
   bool D;
+  bool E;
+  bool F;
 }; // end buttonState structure
-
 // Assign Button Pin Locations
-Buttons buttonState = { false, false, false, false }; // inverted button logic
-
+Buttons buttonState = { false, false, false, false, false, false }; 
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Neutral
 bool stop(void) {              // need to use bool here because structure in T/F return 
   valX = analogRead(joystickX);
   valY= analogRead(joystickY);
@@ -160,6 +158,59 @@ bool strafe_BR(void) {
   return(strafe_BRRange);
   } // end bool forward
 /////////////////////////////////////////////////////////////////////////////////////////////
+// Special Movements
+bool rotate_R(void) {
+  valX = analogRead(joystickX);
+  valY= analogRead(joystickY);
+  
+  const int minY = 257;
+  const int maxY = 767;
+  const int minX = 523;
+  const int maxX = 1023;
+
+  const bool rotate_R = (valX >= minX && valX <= maxX) && (valY >= minY && valY <= maxY);
+  return(rotate_R);
+  } // end bool rotate_R
+
+bool crab_right(void) {
+  valX = analogRead(joystickX);
+  valY= analogRead(joystickY);
+  
+  const int minY = 523;
+  const int maxY = 1023;
+  const int minX = 257;
+  const int maxX = 767;
+
+  const bool crab_right = (valX >= minX && valX <= maxX) && (valY >= minY && valY <= maxY);
+  return(crab_right);
+  } // end bool crab_right
+
+bool rotate_L(void) {
+  valX = analogRead(joystickX);
+  valY= analogRead(joystickY);
+  
+  const int minY = 257;
+  const int maxY = 767;
+  const int minX = 0;
+  const int maxX = 501;
+
+  const bool rotate_L = (valX >= minX && valX <= maxX) && (valY >= minY && valY <= maxY);
+  return(rotate_L);
+  } // end bool rotate_L
+
+bool crab_left(void) {
+  valX = analogRead(joystickX);
+  valY= analogRead(joystickY);
+  
+  const int minY = 0;
+  const int maxY = 501;
+  const int minX = 257;
+  const int maxX = 767;
+
+  const bool crab_left = (valX >= minX && valX <= maxX) && (valY >= minY && valY <= maxY);
+  return(crab_left);
+  } // end bool crab_left
+/////////////////////////////////////////////////////////////////////////////////////////////
 // Main Setup & Loop
 void setup() {
   Serial.begin(115200);
@@ -169,7 +220,8 @@ void setup() {
   pinMode(btnB, INPUT_PULLUP);
   pinMode(btnC, INPUT_PULLUP);
   pinMode(btnD, INPUT_PULLUP);
-
+  pinMode(btnE, INPUT_PULLUP);
+  pinMode(btnF, INPUT_PULLUP);
 } // end setup
 
 void loop() {
@@ -181,21 +233,29 @@ void loop() {
     Serial.print("Stop      |");
   } // end check stop
 
-  if(forward() == true) {
+  if(rotate_R() && buttonState.F) {
+    Serial.print("Rotate_R  |");
+  } else if (forward()) { // end rotate_R
     Serial.print("Forward   |");
-  } // end forward check
-
-  if(right() == true) {
+  }
+  
+  if(crab_right() && buttonState.F) {
+    Serial.print("Crab_R    |");
+  } else if (right()) { // end crab right
     Serial.print("Right     |");
   } // end right check  
 
-  if(backward() == true) {
+  if(rotate_L() && buttonState.F) {
+    Serial.print("Rotate_L  |");
+  } else if (backward()) { // end rotate_L
     Serial.print("Backward  |");
-  } // end backward check  
+  } 
 
-  if(left() == true) {
+  if(crab_left() && buttonState.F) {
+    Serial.print("Crab_L    |");
+  } else if (left()) { // end crab left
     Serial.print("Left      |");
-  } // end left check 
+  } // end left check   
 
   if(strafe_FL() == true) {
     Serial.print("Strafe_FL |");
@@ -245,12 +305,29 @@ void loop() {
   buttonState.D = (digitalRead(btnD) == LOW);
   Serial.print(" D: ");
   if(buttonState.D) {
-    Serial.println(" Y |");
+    Serial.print(" Y |");
   } // end btn.A read
   else {
-    Serial.println(" N |");
+    Serial.print(" N |");
   } // end btn.A else
 
+  buttonState.E = (digitalRead(btnE) == LOW);
+  Serial.print(" E: ");
+  if(buttonState.E) {
+    Serial.print(" Y |");
+  } // end btn.E read
+  else {
+    Serial.print(" N |");
+  } // end btn.E else
+
+  buttonState.F = (digitalRead(btnF) == LOW);
+  Serial.print(" SM: ");
+  if(buttonState.F) {
+    Serial.println(" Y |");
+  } // end btn.F read
+  else {
+    Serial.println(" N |");
+  } // end btn.F else
 
 // delay to not bog terminal
 delay(100);
