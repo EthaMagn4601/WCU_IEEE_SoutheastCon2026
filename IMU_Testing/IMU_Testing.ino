@@ -3,6 +3,8 @@
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 
+//Testing so leon can see
+
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
 void setup(void) 
