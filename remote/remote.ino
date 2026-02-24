@@ -20,12 +20,12 @@
 #define MOTOR_IN7 18
 #define MOTOR_IN8 19
 
-#define motor_foward 0b10100101
+#define motor_forward 0b10100101
 #define motor_reverse 0b01011010
-#define motor_rstrave 0b01100110
-#define motor_lstrave 0b10011001
-#define motor_cwrotate 0b10101010
-#define motor_ccwrotate 0b01010101
+#define motor_r_strave 0b01100110
+#define motor_l_strave 0b10011001
+#define motor_cw_rotate 0b10101010
+#define motor_ccw_rotate 0b01010101
 #define motor_coast 0b00000000
 #define motor_stop 0b11111111
 
@@ -34,17 +34,17 @@
 bool remote_flag = 0; //serial communication flag
 uint8_t remote_input = 0; //remote dataword
 
-uint8_t memory_movement[] = {};
-unsigned int memory_time[] = {};
-unsigned int memory_changes = 0;
+uint8_t memory_movement[350] = {};
+uint16_t memory_time[350] = {};
+uint16_t memory_changes = 0;
 uint16_t total_mem_changes = 0;
-unsigned int stop_stamp = 0;
+unsigned stop_stamp = 0;
 
 bool repeat_flag = 0;
 
 uint8_t motor_command[8] = {
-    motor_foward, motor_reverse, motor_rstrave, motor_lstrave,
-    motor_cwrotate, motor_ccwrotate, motor_coast, motor_stop
+    motor_forward, motor_reverse, motor_r_strave, motor_l_strave,
+    motor_cw_rotate, motor_ccw_rotate, motor_coast, motor_stop
   };
 
 uint8_t motor_enable[8] = {
@@ -127,8 +127,8 @@ uint16_t customTime(){ //divide a second into 32 steps to shrink storage space
 }
 
 bool commitEEPROM(){
-  EEPROM.write(0, total_mem_changes >> 8); //stores the first eight
-  EEPROM.write(1, total_mem_changes & 0b11111111); //stores the last eight
+  EEPROM.write(0, uint8_t(total_mem_changes >> 8)); //stores the first eight
+  EEPROM.write(1, uint8_t(total_mem_changes & 0b11111111)); //stores the last eight
   
   for(uint16_t z = 0; z < total_mem_changes; z++){
     unsigned int e = (z * 3) + 10; //reserve spaces from 0 to 9 for other variables.
@@ -138,7 +138,7 @@ bool commitEEPROM(){
   }
   return EEPROM.commit(); //this will write to the EEPROM permanantly. return value shows successful writing
 }
-void laodEEPROM(){
+void loadEEPROM(){
   total_mem_changes = EEPROM.read(0) << 8; //stores the first eight
   total_mem_changes = total_mem_changes | EEPROM.read(1); //stores the last eight
   
