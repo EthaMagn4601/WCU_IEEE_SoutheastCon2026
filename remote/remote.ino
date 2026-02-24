@@ -1,5 +1,7 @@
+// IEEE team coders 2026: Leon Mueller; Jordan Fox; Ethan Magnante
 
 
+#include <EEPROM.h>
 
 
 // Motor 1 (Front Right)
@@ -27,13 +29,15 @@
 #define motor_coast 0b00000000
 #define motor_stop 0b11111111
 
+#define eeprom_size 1024 //1024 bytes we are using 3 bytes per position, so about 340 position changes
+
 bool remote_flag = 0; //serial communication flag
 uint8_t remote_input = 0; //remote dataword
 
 uint8_t memory_movement[] = {};
 unsigned int memory_time[] = {};
 unsigned int memory_changes = 0;
-unsigned int total_mem_changes = 0;
+uint16_t total_mem_changes = 0;
 unsigned int stop_stamp = 0;
 
 bool repeat_flag = 0;
@@ -59,9 +63,10 @@ void motorControl (uint8_t motor_action) { // 0b00000000
 
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
   while (!Serial) delay(10);  // wait for serial port to open
+
+  EEPROM.begin(eeprom_size);
 
 }
 
@@ -69,15 +74,18 @@ void loop() {
 
  if (remote_flag) {
     remote_flag = 0;
-    //remote_input
     motorControl(motor_command[remote_input >> 4]);
-    millis();
-    memory_movement[memory_changes] = {};
-    memory_time[memory_changes] = {};
+    //other functions using the last 4 bits
+    
+    memory_movement[memory_changes] = remote_input;
+    memory_time[memory_changes] = millis();
     memory_changes++;
 
-    if(("repeat flag is set")){
-      repeat_flag = 1;
+
+    repeat_flag = remote_input & 1; //uses last bit to control repeat action.
+
+    if((repeat_flag)){
+      
       stop_stamp = millis();
       total_mem_changes = memory_changes;
       memory_changes = 0;
@@ -106,6 +114,38 @@ void serialEvent() {
   while (Serial.available()) {
     //will read one incoming byte
     remote_input = Serial.read();
-    bool remote_flag = 1;
+    if(!repeat_flag) remote_flag = 1; //don't accept remote when vehicle is repeating operation
+  }
+}
+
+void showError(){
+  //some code, some LED, that shows errors
+}
+
+uint16_t customTime(){ //divide a second into 32 steps to shrink storage space
+  return uint16_t(millis() / 31.25);
+}
+
+bool commitEEPROM(){
+  EEPROM.write(0, total_mem_changes >> 8); //stores the first eight
+  EEPROM.write(1, total_mem_changes & 0b11111111); //stores the last eight
+  
+  for(uint16_t z = 0; z < total_mem_changes; z++){
+    unsigned int e = (z * 3) + 10; //reserve spaces from 0 to 9 for other variables.
+    EEPROM.write(e, uint8_t(memory_time[z] >> 8)); //stores the first eight
+    EEPROM.write(e+1, uint8_t(memory_time[z] & 0b11111111)); //stores the last eight
+    EEPROM.write(e+2, memory_movement[z]);
+  }
+  return EEPROM.commit(); //this will write to the EEPROM permanantly. return value shows successful writing
+}
+void laodEEPROM(){
+  total_mem_changes = EEPROM.read(0) << 8; //stores the first eight
+  total_mem_changes = total_mem_changes | EEPROM.read(1); //stores the last eight
+  
+  for(uint16_t z = 0; z < total_mem_changes; z++){
+    unsigned int e = (z * 3) + 10; //reserve spaces from 0 to 9 for other variables.
+    memory_time[z] = EEPROM.read(e) << 8; //stores the first eight
+    memory_time[z] = total_mem_changes | EEPROM.read(e+1); //stores the last eight
+    memory_movement[z] = EEPROM.read(e+2);
   }
 }
