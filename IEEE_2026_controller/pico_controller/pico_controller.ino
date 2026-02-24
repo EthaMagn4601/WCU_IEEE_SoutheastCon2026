@@ -36,6 +36,9 @@ struct Buttons {
   bool E;
   bool F;
 }; // end buttonState structure
+
+bool specialMode = 0;
+
 // Assign Button Pin Locations
 Buttons buttonState = { false, false, false, false, false, false }; 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +228,13 @@ void setup() {
 } // end setup
 
 void loop() {
+  while(!digitalRead(btnA)){
+    delay(200);
+    while(!digitalRead(btnA)){
+      delay(1);
+    }
+    specialMode = !specialMode;
+  }
 
   //Movement
   Serial.print("Movement: ");
@@ -233,25 +243,25 @@ void loop() {
     Serial.print("Stop      |");
   } // end check stop
 
-  if(rotate_R() && buttonState.F) {
+  if(rotate_R() && specialMode) {
     Serial.print("Rotate_R  |");
   } else if (forward()) { // end rotate_R
     Serial.print("Forward   |");
   }
   
-  if(crab_right() && buttonState.F) {
+  if(crab_right() && specialMode) {
     Serial.print("Crab_R    |");
   } else if (right()) { // end crab right
     Serial.print("Right     |");
   } // end right check  
 
-  if(rotate_L() && buttonState.F) {
+  if(rotate_L() && specialMode) {
     Serial.print("Rotate_L  |");
   } else if (backward()) { // end rotate_L
     Serial.print("Backward  |");
   } 
 
-  if(crab_left() && buttonState.F) {
+  if(crab_left() && specialMode) {
     Serial.print("Crab_L    |");
   } else if (left()) { // end crab left
     Serial.print("Left      |");
@@ -320,9 +330,9 @@ void loop() {
     Serial.print(" N |");
   } // end btn.E else
 
-  buttonState.F = (digitalRead(btnF) == LOW);
+  //buttonState.F = (digitalRead(btnF) == LOW);
   Serial.print(" SM: ");
-  if(buttonState.F) {
+  if(specialMode) {
     Serial.println(" Y |");
   } // end btn.F read
   else {
@@ -330,6 +340,6 @@ void loop() {
   } // end btn.F else
 
 // delay to not bog terminal
-delay(100);
+delay(1 0);
 
 } // end loop
