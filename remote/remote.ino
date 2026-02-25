@@ -38,7 +38,7 @@ uint8_t memory_movement[350] = {};
 uint16_t memory_time[350] = {};
 uint16_t memory_changes = 0;
 uint16_t total_mem_changes = 0;
-unsigned stop_stamp = 0;
+uint16_t stop_stamp = 0;
 
 bool repeat_flag = 0;
 
