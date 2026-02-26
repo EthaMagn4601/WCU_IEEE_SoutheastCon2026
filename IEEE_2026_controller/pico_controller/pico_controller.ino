@@ -76,6 +76,7 @@
   
   void setup() {
     Serial.begin(9600);
+    Serial1.begin(9600);
 
     // Set the button pin as an input 
     pinMode(btnA, INPUT_PULLUP);
@@ -158,10 +159,10 @@
   // Debug
     // Serial.println(micros()-prev_t);
     // prev_t = micros();
-
-  if(Serial.availableForWrite() > 1){
-    if(repeatMode){Serial.write((m_state << 4)|0b00001111);}
-    else{Serial.write(m_state << 4);}
+  
+  if(Serial1.availableForWrite() >= 1){
+    if(repeatMode){Serial1.write((m_state << 4)|0b00001111);}
+    else{Serial1.write(m_state << 4);}
   }
 
 } // end loop
