@@ -24,14 +24,14 @@
   #define btnF 16 // tiny switch 2
 
   const uint16_t maxAVal = 1023; // max values for x and y axis of joystick respectively.
-  const uint8_t mapDivisions = 11;
+  const uint8_t mapDivisions = 31;
+  const uint8_t upXThresh = 26;
+  const uint8_t downXThresh = 11;
 
   bool turnMode = 0;
 
   // Variables for store values
   int valX = 0;
-  int valY = 0; 
-  bool ser_ena = true; // disable if you don't want serial output to terminal (does not mean serial output to other devices)
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // MOTOR DIRECTION FUNCTIONS
@@ -44,11 +44,34 @@
     bool F;
   }; // end buttonState structure
 
+  /////////////////////
+  // Encoding Scheme //
+  /////////////////////
+
+  uint8_t m_state = 0x0;
+
+  uint8_t m_move[11] = {
+    0x0, // Stop
+    0x1, // Strafe FL
+    0x2, // Strafe BR
+    0x3, // Strafe BL
+    0x4, // Strafe FR
+    0x5, // Left
+    0x6, // Right
+    0x7, // Forward
+    0x8, // Backward
+    0x9, // CCW Rotate
+    0xA // CW Rotate
+  };
+
   // Assign Button Pin Locations
   Buttons buttonState = {false, false, false, false, false, false}; 
 
   /////////////////////////////////////////////////////////////////////////////////////////////
   // Main Setup & Loop
+  
+  bool ser_ena = true; // disable if you don't want serial output to terminal (does not mean serial output to other devices)
+  
   void setup() {
     Serial.begin(115200);
 
@@ -72,40 +95,48 @@
       turnMode = !turnMode;
     }
 
-    valY = map(analogRead(joystickY), 0, maxAVal, 0, mapDivisions);
+    valX = map(analogRead(joystickX), 0, maxAVal, 0, mapDivisions);
     
     // Debug
-    // Serial.println(analogRead(joystickX));
-    // Serial.println(analogRead(joystickY));
-
-    switch (map(analogRead(joystickX), 0, maxAVal, 0, mapDivisions)){
-      case 0: // We're pushing joystick left
-        if(turnMode) {if(ser_ena) Serial.println("Movement: CCW Rotate");} 
-        else {if(ser_ena) Serial.println("Movement: Left");}
-        break;
-      case 1: case 2: case 3: // We're pushing joystick left and (up or down)
-        if(valY <= 4) {if(ser_ena){ Serial.println("Movement: Strafe BL");}}
-        else {if(ser_ena) Serial.println("Movement: Strafe FL");}
-        break;
-      case 4: case 5: case 6: // We're pushing joystick straight (up or down) or !pushing
-        if(valY <= 3) {if(ser_ena) Serial.println("Movement: Reverse");}
-        else if(valY > 6) {if(ser_ena) Serial.println("Movement: Forward");}
-        else{if(ser_ena) Serial.println("Movement: Stop");}
-        break;
-      case 7: case 8: case 9: // We're pushing joystick right and (up or down)
-        if(valY <= 4) {if(ser_ena) Serial.println("Movement: Strafe BR");}
-        else{if(ser_ena) Serial.println("Movement: FR");}
-        break;
-      case 10: // We're pushing joystick right
-        if(turnMode) {if(ser_ena) Serial.println("Movement: CW Rotate");}
-        else {if(ser_ena) Serial.println("Movement: ");}
-        break;
-      default:
-        if(ser_ena) Serial.println("Movement: Stop");
-        break;
+    if(ser_ena){
+      Serial.print("Analog ValX: ");
+      Serial.println(analogRead(joystickX));
+      Serial.print("Map ValX: ");
+      Serial.println(valX);
+      Serial.print("Analog ValY: ");
+      Serial.println(analogRead(joystickY));
+      Serial.print("Map ValY: ");
+      Serial.println(map(analogRead(joystickY), 0, maxAVal, 0, mapDivisions));
     }
 
-  // delay to not bog terminal
-  delay(10);
+    switch (map(analogRead(joystickY), 0, maxAVal, 0, mapDivisions)){
+      case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7: 
+        if(valX >= upXThresh){m_state = m_move[1]; if(ser_ena) Serial.println("Movement: Strafe FL");}
+        else if(valX <= downXThresh){m_state = m_move[3]; if(ser_ena) Serial.println("Movement: Strafe BL");}
+        else{if(turnMode){m_state = m_move[9]; if(ser_ena) Serial.println("Movement: CCW Rotate");} else{m_state = m_move[5]; if(ser_ena) Serial.println("Movement: Left");}}
+      break;
+      case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15: 
+      case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23:
+        if(valX >= upXThresh){m_state = m_move[7]; if(ser_ena) Serial.println("Movement: Forward");}
+        else if(valX <= downXThresh){m_state = m_move[8]; if(ser_ena) Serial.println("Movement: Backward");}
+        else{m_state = m_move[0]; if(ser_ena) Serial.println("Movement: Stop");}
+      break;
+      case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31: 
+        if(valX >= upXThresh){m_state = m_move[4]; if(ser_ena) Serial.println("Movement: Strafe FR");}
+        else if(valX <= downXThresh){m_state = m_move[2]; if(ser_ena) Serial.println("Movement: Strafe BR");}
+        else{if(turnMode){m_state = m_move[10]; if(ser_ena) Serial.println("Movement: CW Rotate");} else{m_state = m_move[6]; if(ser_ena) Serial.println("Movement: Right");}}
+      break;
+      default:
+        m_state = m_move[0]; if(ser_ena) Serial.println("Movement: Stop");
+      break;
+    }
+  
+  // Debug
+  if(ser_ena){
+    Serial.print("m_state: ");
+    Serial.println(m_state);
+    // delay to not bog terminal
+    delay(200);
+  }
 
-  } // end loop
+} // end loop
