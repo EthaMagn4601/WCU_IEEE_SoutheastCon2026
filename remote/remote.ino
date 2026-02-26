@@ -76,7 +76,7 @@ uint8_t motor_enable[8] = {
   };
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   while (!Serial) delay(10);  // wait for serial port to open
 
   // ----- Encoder -----
@@ -98,8 +98,8 @@ void setup() {
   analogWriteRange(PWM_WRAP);
   analogWrite(MOTOR_PWM, 0);
 
-  // uint8_t motor_speed = 20;  // percent
-  // pwm_set_duty(MOTOR_PWM, motor_speed);
+  uint8_t motor_speed = 20;  // percent
+  pwm_set_duty(MOTOR_PWM, motor_speed);
 
   EEPROM.begin(eeprom_size);
 }
@@ -162,6 +162,8 @@ void serialEvent() {
   while (Serial.available()) {
     //will read one incoming byte
     remote_input = Serial.read();
+    if(serial_enable) Serial.println("we have received serial");
+    if(serial_enable) Serial.println(remote_input, BIN);
     if(!repeat_flag) remote_flag = 1; //don't accept remote when vehicle is repeating operation
   }
 }
@@ -179,9 +181,9 @@ void pwm_set_duty(uint pin, uint duty_percent) {
 // ================= Encoder Interrupt =================
 void encoderISR() {
   if (digitalRead(ENCODER_PIN_B))
-    encoder_pos--;
-  else
     encoder_pos++;
+  else
+    encoder_pos--;
 }
 
 void motorControl (uint8_t motor_action) { // 0b00000000
