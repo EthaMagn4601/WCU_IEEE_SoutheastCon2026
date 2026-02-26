@@ -1,8 +1,23 @@
 // IEEE team coders 2026: Leon Mueller; Jordan Fox; Ethan Magnante
 
 
+//change pwm to just be a global speed control and use a map function
+//
+//
+
+
 #include <EEPROM.h>
 
+// ================= Encoder pins =================
+#define ENCODER_PIN_A 2
+#define ENCODER_PIN_B 3
+
+// For an encoder count of 629 positions, the robot moved 13.25 in.
+#define ENC_POS_PER_INCH 47.4716981132f  
+
+// ================= PWM Helpers =================
+#define PWM_FREQ 20000      // 20 kHz
+#define PWM_WRAP 1000       // Resolution
 
 // Motor 1 (Front Right)
 #define MOTOR_IN1 4
@@ -20,6 +35,8 @@
 #define MOTOR_IN7 18
 #define MOTOR_IN8 19
 
+#define MOTOR_PWM 6   // Shared PWM enable
+
 #define motor_forward 0b10100101
 #define motor_reverse 0b01011010
 #define motor_r_strave 0b01100110
@@ -31,16 +48,20 @@
 
 #define eeprom_size 1024 //1024 bytes we are using 3 bytes per position, so about 340 position changes
 
+volatile int32_t encoder_pos = 0;
+
 bool remote_flag = 0; //serial communication flag
 uint8_t remote_input = 0; //remote dataword
 
-uint8_t memory_movement[350] = {};
+uint8_t memory_movement[350] = {}; //reserving ram by defining expected size
 uint16_t memory_time[350] = {};
 uint16_t memory_changes = 0;
 uint16_t total_mem_changes = 0;
 uint16_t stop_stamp = 0;
 
 bool repeat_flag = 0;
+
+bool serial_enable = 1;
 
 uint8_t motor_command[8] = {
     motor_forward, motor_reverse, motor_r_strave, motor_l_strave,
@@ -54,60 +75,87 @@ uint8_t motor_enable[8] = {
     MOTOR_IN7, MOTOR_IN8
   };
 
-
-void motorControl (uint8_t motor_action) { // 0b00000000
-  for (byte z = 0; z < 8; z++){
-    digitalWrite(motor_enable[z], motor_action >> z & 1);
-  }
-}
-
-
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);  // wait for serial port to open
 
-  EEPROM.begin(eeprom_size);
+  // ----- Encoder -----
+  pinMode(ENCODER_PIN_A, INPUT_PULLDOWN);
+  pinMode(ENCODER_PIN_B, INPUT_PULLDOWN);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), encoderISR, RISING);
+  //noInterrupts();
+  //interrupts();
+  
+  // ----- Motor direction pins -----
+  for (int i = 0; i < 8; i++) {
+    pinMode(motor_enable[i], OUTPUT);
+    digitalWrite(motor_enable[i], LOW);
+  }
 
+  // ----- PWM -----
+  pinMode(MOTOR_PWM, OUTPUT);
+  analogWriteFreq(PWM_FREQ);
+  analogWriteRange(PWM_WRAP);
+  analogWrite(MOTOR_PWM, 0);
+
+  // uint8_t motor_speed = 20;  // percent
+  // pwm_set_duty(MOTOR_PWM, motor_speed);
+
+  EEPROM.begin(eeprom_size);
 }
 
 void loop() {
+  
 
- if (remote_flag) {
+  if (remote_flag) {
     remote_flag = 0;
-    motorControl(motor_command[remote_input >> 4]);
-    //other functions using the last 4 bits
-    
-    memory_movement[memory_changes] = remote_input;
-    memory_time[memory_changes] = millis();
-    memory_changes++;
+    if(serial_enable) Serial.println(remote_input);
 
+    motorControl(motor_command[remote_input >> 4]); //1 of 16 different movement calls, defined within motor_command array
 
-    repeat_flag = remote_input & 1; //uses last bit to control repeat action.
-
-    if((repeat_flag)){
-      
-      stop_stamp = millis();
-      total_mem_changes = memory_changes;
-      memory_changes = 0;
-    }
-
+    switch (remote_input & 0b1111) { // 16 postions for special functions
+      case 0: // regular movement saving
+        memory_movement[memory_changes] = remote_input;
+        memory_time[memory_changes] = customTime();
+        if(serial_enable) Serial.print("regular operation, movement change number: ");
+        if(serial_enable) Serial.println(memory_changes);
+        memory_changes++;
+        break;
+      case 1: //setting repeat flag
+        repeat_flag = 1;
+        stop_stamp = customTime();
+        total_mem_changes = memory_changes;
+        memory_changes = 0;
+        break;
+      case 2: //setting reference location
+        // statements
+        break;
+      case 3: //stop time counter
+        // statements
+        break;
+      case 4: //function call
+        // statements
+        break;
+      case 5: //moving up in menu
+        // statements
+        break;
+      case 6: //moving down in menu
+        // statements
+        break;
+      case 7: //selecting in menu
+        // statements
+        break;
+      default:
+        break;
+    } 
   }
 
   if (repeat_flag){
-    if (memory_time[memory_changes] < millis() - stop_stamp){
+    if (memory_time[memory_changes] < customTime() - stop_stamp){
       memory_changes++;
       motorControl(motor_command[memory_movement[memory_changes] >> 4]);
     }
-
   }
-
-  // for (byte z = 0; z < 8; z++){
-  //   Motorcontrol (motor_command[z]);
-  //   Serial.print("now executing movement: ");
-  //   Serial.println(z);
-  //   delay(2000);
-  // }
-  // delay(5000);
 }
 
 void serialEvent() {
@@ -120,6 +168,28 @@ void serialEvent() {
 
 void showError(){
   //some code, some LED, that shows errors
+}
+
+void pwm_set_duty(uint pin, uint duty_percent) {
+  if (duty_percent > 100) duty_percent = 100;
+  uint16_t level = (duty_percent * PWM_WRAP) / 100;
+  analogWrite(pin, level);
+}
+
+// ================= Encoder Interrupt =================
+void encoderISR() {
+  if (digitalRead(ENCODER_PIN_B))
+    encoder_pos--;
+  else
+    encoder_pos++;
+}
+
+void motorControl (uint8_t motor_action) { // 0b00000000
+  for (byte z = 0; z < 8; z++){
+    digitalWrite(motor_enable[z], motor_action >> z & 1);
+  }
+  if(serial_enable) Serial.print("now executing movement: ");
+  if(serial_enable) Serial.println(motor_action);
 }
 
 uint16_t customTime(){ //divide a second into 32 steps to shrink storage space
