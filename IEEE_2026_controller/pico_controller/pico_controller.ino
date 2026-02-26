@@ -28,7 +28,8 @@
   const uint8_t upXThresh = 26;
   const uint8_t downXThresh = 11;
 
-  bool turnMode = 0;
+  bool turnMode = 1;
+  bool repeatMode = 0;
 
   // Variables for store values
   int valX = 0;
@@ -66,14 +67,15 @@
 
   // Assign Button Pin Locations
   Buttons buttonState = {false, false, false, false, false, false}; 
+  int prev_t = 0;
 
   /////////////////////////////////////////////////////////////////////////////////////////////
   // Main Setup & Loop
   
-  bool ser_ena = true; // disable if you don't want serial output to terminal (does not mean serial output to other devices)
+  bool ser_ena = false; // disable if you don't want serial output to terminal (does not mean serial output to other devices)
   
   void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
 
     // Set the button pin as an input 
     pinMode(btnA, INPUT_PULLUP);
@@ -82,6 +84,8 @@
     pinMode(btnD, INPUT_PULLUP);
     pinMode(btnE, INPUT_PULLUP);
     pinMode(btnF, INPUT_PULLUP);
+
+    pinMode(LED_BUILTIN, OUTPUT);
 
   } // end setup
 
@@ -94,6 +98,16 @@
       }
       turnMode = !turnMode;
     }
+    while(!digitalRead(btnF)){
+      delay(200);
+      while(!digitalRead(btnF)){
+        delay(1);
+      }
+      repeatMode = !repeatMode;
+    }
+
+    if(turnMode){digitalWrite(LED_BUILTIN, HIGH);}
+    else{digitalWrite(LED_BUILTIN, LOW);}
 
     valX = map(analogRead(joystickX), 0, maxAVal, 0, mapDivisions);
     
@@ -135,8 +149,19 @@
   if(ser_ena){
     Serial.print("m_state: ");
     Serial.println(m_state);
+    Serial.print("Delta t: ");
+    // Serial.println(micros()-prev_t);
+    // prev_t = micros();
     // delay to not bog terminal
     delay(200);
+  }
+  // Debug
+    // Serial.println(micros()-prev_t);
+    // prev_t = micros();
+
+  if(Serial.availableForWrite() > 1){
+    if(repeatMode){Serial.write((m_state << 4)|0b00001111);}
+    else{Serial.write(m_state << 4);}
   }
 
 } // end loop
