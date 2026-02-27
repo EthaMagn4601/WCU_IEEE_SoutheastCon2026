@@ -20,8 +20,8 @@
 #define PWM_WRAP 1000       // Resolution
 
 // Motor 1 (Front Right)
-#define MOTOR_IN1 4
-#define MOTOR_IN2 5
+#define MOTOR_IN1 7
+#define MOTOR_IN2 8
 
 // Motor 2 (Back Right)
 #define MOTOR_IN3 12
@@ -37,14 +37,17 @@
 
 #define MOTOR_PWM 6   // Shared PWM enable
 
-#define motor_forward 0b10100101
-#define motor_reverse 0b01011010
-#define motor_r_strave 0b01100110
-#define motor_l_strave 0b10011001
-#define motor_cw_rotate 0b10101010
-#define motor_ccw_rotate 0b01010101
-#define motor_coast 0b00000000
-#define motor_stop 0b11111111
+#define m_stop         0b11111111
+#define m_forward      0b10101010
+#define m_backward     0b01010101
+#define m_strafe_fl    0b10011001
+#define m_strafe_br    0b01100110
+#define m_strafe_bl    0b01101001
+#define m_strafe_fr    0b10010110
+#define m_left         0b01100110
+#define m_right        0b10011001
+#define m_ccw_rotate   0b01011010
+#define m_cw_rotate    0b10100101
 
 #define eeprom_size 1024 //1024 bytes we are using 3 bytes per position, so about 340 position changes
 
@@ -63,9 +66,9 @@ bool repeat_flag = 0;
 
 bool serial_enable = 1;
 
-uint8_t motor_command[8] = {
-    motor_forward, motor_reverse, motor_r_strave, motor_l_strave,
-    motor_cw_rotate, motor_ccw_rotate, motor_coast, motor_stop
+uint8_t motor_command[11] = {
+    m_stop, m_strafe_fl, m_strafe_br, m_strafe_bl, m_strafe_fr,
+    m_left, m_right, m_cw_rotate, m_ccw_rotate, m_backward, m_forward
   };
 
 uint8_t motor_enable[8] = {
@@ -77,7 +80,8 @@ uint8_t motor_enable[8] = {
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial) delay(10);  // wait for serial port to open
+  Serial1.begin(9600);
+  //while (!Serial) delay(10);  // wait for serial port to open
 
   // ----- Encoder -----
   pinMode(ENCODER_PIN_A, INPUT_PULLDOWN);
@@ -105,63 +109,64 @@ void setup() {
 }
 
 void loop() {
-  
+  if(Serial1.available()) {uint8_t received = Serial1.read(); uint8_t movement_index = received >> 4; motorControl(motor_command[movement_index]);}
+  //motorControl(motor_command[parsed_bit]);
+  // if (remote_flag) {
+  //   remote_flag = 0;
+  //   if(serial_enable) Serial.println(remote_input);
 
-  if (remote_flag) {
-    remote_flag = 0;
-    if(serial_enable) Serial.println(remote_input);
+  //   motorControl(motor_command[remote_input >> 4]); //1 of 16 different movement calls, defined within motor_command array
 
-    motorControl(motor_command[remote_input >> 4]); //1 of 16 different movement calls, defined within motor_command array
+  //   switch (remote_input & 0b1111) { // 16 postions for special functions
+  //     case 0: // regular movement saving
+  //       memory_movement[memory_changes] = remote_input;
+  //       memory_time[memory_changes] = customTime();
+  //       if(serial_enable) Serial.print("regular operation, movement change number: ");
+  //       if(serial_enable) Serial.println(memory_changes);
+  //       memory_changes++;
+  //       break;
+  //     case 1: //setting repeat flag
+  //       repeat_flag = 1;
+  //       stop_stamp = customTime();
+  //       total_mem_changes = memory_changes;
+  //       memory_changes = 0;
+  //       break;
+  //     case 2: //setting reference location
+  //       // statements
+  //       break;
+  //     case 3: //stop time counter
+  //       // statements
+  //       break;
+  //     case 4: //function call
+  //       // statements
+  //       break;
+  //     case 5: //moving up in menu
+  //       // statements
+  //       break;
+  //     case 6: //moving down in menu
+  //       // statements
+  //       break;
+  //     case 7: //selecting in menu
+  //       // statements
+  //       break;
+  //     default:
+  //       break;
+  //   } 
+  // }
 
-    switch (remote_input & 0b1111) { // 16 postions for special functions
-      case 0: // regular movement saving
-        memory_movement[memory_changes] = remote_input;
-        memory_time[memory_changes] = customTime();
-        if(serial_enable) Serial.print("regular operation, movement change number: ");
-        if(serial_enable) Serial.println(memory_changes);
-        memory_changes++;
-        break;
-      case 1: //setting repeat flag
-        repeat_flag = 1;
-        stop_stamp = customTime();
-        total_mem_changes = memory_changes;
-        memory_changes = 0;
-        break;
-      case 2: //setting reference location
-        // statements
-        break;
-      case 3: //stop time counter
-        // statements
-        break;
-      case 4: //function call
-        // statements
-        break;
-      case 5: //moving up in menu
-        // statements
-        break;
-      case 6: //moving down in menu
-        // statements
-        break;
-      case 7: //selecting in menu
-        // statements
-        break;
-      default:
-        break;
-    } 
-  }
-
-  if (repeat_flag){
-    if (memory_time[memory_changes] < customTime() - stop_stamp){
-      memory_changes++;
-      motorControl(motor_command[memory_movement[memory_changes] >> 4]);
-    }
-  }
+  // if (repeat_flag){
+  //   if (memory_time[memory_changes] < customTime() - stop_stamp){
+  //     memory_changes++;
+  //     motorControl(motor_command[memory_movement[memory_changes] >> 4]);
+  //   }
+  // }
 }
 
+
 void serialEvent() {
-  while (Serial.available()) {
+  while (Serial1.available()) {
     //will read one incoming byte
-    remote_input = Serial.read();
+    remote_input = Serial1.read();
     if(serial_enable) Serial.println("we have received serial");
     if(serial_enable) Serial.println(remote_input, BIN);
     if(!repeat_flag) remote_flag = 1; //don't accept remote when vehicle is repeating operation
@@ -190,8 +195,8 @@ void motorControl (uint8_t motor_action) { // 0b00000000
   for (byte z = 0; z < 8; z++){
     digitalWrite(motor_enable[z], motor_action >> z & 1);
   }
-  if(serial_enable) Serial.print("now executing movement: ");
-  if(serial_enable) Serial.println(motor_action);
+  //if(serial_enable) Serial.print("now executing movement: ");
+  //if(serial_enable) Serial.println(motor_action);
 }
 
 uint16_t customTime(){ //divide a second into 32 steps to shrink storage space
