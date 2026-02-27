@@ -88,6 +88,8 @@
 
     pinMode(LED_BUILTIN, OUTPUT);
 
+    delay(200); //give buttons time to settle
+
   } // end setup
 
   void loop() {
@@ -104,12 +106,17 @@
       while(!digitalRead(btnF)){
         delay(1);
       }
-      repeatMode = !repeatMode;
+      repeatMode = 1;
     }
 
-    if(turnMode){digitalWrite(LED_BUILTIN, HIGH);}
+    // if(turnMode){digitalWrite(LED_BUILTIN, HIGH);}
+    // else{digitalWrite(LED_BUILTIN, LOW);}
+
+    if(repeatMode){digitalWrite(LED_BUILTIN, HIGH);}
     else{digitalWrite(LED_BUILTIN, LOW);}
 
+    
+    
     valX = map(analogRead(joystickX), 0, maxAVal, 0, mapDivisions);
     
     // Debug
@@ -161,7 +168,7 @@
     // prev_t = micros();
   
   if(Serial1.availableForWrite() >= 1){
-    if(repeatMode){Serial1.write((m_state << 4)|0b00001111);}
+    if(repeatMode){Serial1.write((m_state << 4)|1); repeatMode = 0;}
     else{Serial1.write(m_state << 4);}
   }
 

@@ -81,7 +81,11 @@ uint8_t motor_enable[8] = {
 void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
-  //while (!Serial) delay(10);  // wait for serial port to open
+  if(serial_enable) delay(2000);  // wait for serial port to open
+  if(serial_enable) Serial.println("booted and receiving");
+  if(serial_enable) Serial.print("currently saved movements: ");
+  if(serial_enable) loadEEPROM();
+  if(serial_enable) Serial.println(total_mem_changes);
 
   // ----- Encoder -----
   pinMode(ENCODER_PIN_A, INPUT_PULLDOWN);
@@ -109,67 +113,92 @@ void setup() {
 }
 
 void loop() {
-  if(Serial1.available()) {uint8_t received = Serial1.read(); uint8_t movement_index = received >> 4; motorControl(motor_command[movement_index]);}
-  //motorControl(motor_command[parsed_bit]);
-  // if (remote_flag) {
-  //   remote_flag = 0;
-  //   if(serial_enable) Serial.println(remote_input);
+  if(!repeat_flag)checkSerial(); //regular serial function doesn't work, so we have to put our own.
 
-  //   motorControl(motor_command[remote_input >> 4]); //1 of 16 different movement calls, defined within motor_command array
+  if (remote_flag) {
+    remote_flag = 0;
+    if(serial_enable) Serial.print("remote input: ");
+    if(serial_enable) Serial.println(remote_input,BIN);
 
-  //   switch (remote_input & 0b1111) { // 16 postions for special functions
-  //     case 0: // regular movement saving
-  //       memory_movement[memory_changes] = remote_input;
-  //       memory_time[memory_changes] = customTime();
-  //       if(serial_enable) Serial.print("regular operation, movement change number: ");
-  //       if(serial_enable) Serial.println(memory_changes);
-  //       memory_changes++;
-  //       break;
-  //     case 1: //setting repeat flag
-  //       repeat_flag = 1;
-  //       stop_stamp = customTime();
-  //       total_mem_changes = memory_changes;
-  //       memory_changes = 0;
-  //       break;
-  //     case 2: //setting reference location
-  //       // statements
-  //       break;
-  //     case 3: //stop time counter
-  //       // statements
-  //       break;
-  //     case 4: //function call
-  //       // statements
-  //       break;
-  //     case 5: //moving up in menu
-  //       // statements
-  //       break;
-  //     case 6: //moving down in menu
-  //       // statements
-  //       break;
-  //     case 7: //selecting in menu
-  //       // statements
-  //       break;
-  //     default:
-  //       break;
-  //   } 
-  // }
+    motorControl(motor_command[remote_input >> 4]); //1 of 16 different movement calls, defined within motor_command array
 
-  // if (repeat_flag){
-  //   if (memory_time[memory_changes] < customTime() - stop_stamp){
-  //     memory_changes++;
-  //     motorControl(motor_command[memory_movement[memory_changes] >> 4]);
-  //   }
-  // }
+    switch (remote_input & 0b1111) { // 16 postions for special functions
+      case 0: // regular movement saving
+        memory_movement[memory_changes] = remote_input;
+        if(memory_changes == 0){
+            memory_time[memory_changes] = 64; //gives the first change a guaranteed 2s wait
+        } else {
+          if (remote_input >> 4 == 0){
+            memory_time[memory_changes] = memory_time[memory_changes - 1] + 6; //makes stops, or 0 move commands only be 180ms long
+          } else {
+            memory_time[memory_changes] = customTime();
+          }
+        }
+        if(serial_enable) Serial.print("regular operation, movement change number: ");
+        if(serial_enable) Serial.println(memory_changes);
+        memory_changes++;
+        break;
+      case 1: //setting repeat flag
+        repeat_flag = 1;
+        stop_stamp = customTime();
+        total_mem_changes = memory_changes;
+        memory_changes = 0;
+        break;
+      case 2: //setting reference location
+        // statements
+        break;
+      case 3: //stop time counter
+        // statements
+        break;
+      case 4: //function call
+        // statements
+        break;
+      case 5: //moving up in menu
+        // statements
+        break;
+      case 6: //moving down in menu
+        // statements
+        break;
+      case 7: //selecting in menu
+        // statements
+        break;
+      default:
+        break;
+    } 
+  }
+
+  if (repeat_flag){
+    if(memory_changes < total_mem_changes){
+      if(serial_enable) Serial.print("ms till next action: ");
+      if(serial_enable) Serial.println(int(31.25 * (memory_time[memory_changes] - (customTime() - stop_stamp))));
+      if(serial_enable) delay(10);
+      if (memory_time[memory_changes] < customTime() - stop_stamp){
+        if(serial_enable) Serial.print("repeating movement number: ");
+        if(serial_enable) Serial.print(memory_changes);
+        if(serial_enable) Serial.print(" movement action: ");
+        if(serial_enable) Serial.println(memory_movement[memory_changes],BIN);
+        motorControl(motor_command[memory_movement[memory_changes] >> 4]);
+        memory_changes++;
+      }
+    } else {
+      if(serial_enable) Serial.println("done with repeating action");
+      repeat_flag = 0;
+      Serial1.read(); //dump serial buffer
+    }
+  }
 }
 
 
-void serialEvent() {
-  while (Serial1.available()) {
-    //will read one incoming byte
-    remote_input = Serial1.read();
-    if(serial_enable) Serial.println("we have received serial");
-    if(serial_enable) Serial.println(remote_input, BIN);
-    if(!repeat_flag) remote_flag = 1; //don't accept remote when vehicle is repeating operation
+void checkSerial() {
+  if (Serial1.available()) {
+    //if(serial_enable) Serial.println("we got serial");
+    uint8_t temp = Serial1.read();
+    if(temp == remote_input){ //the remote sends constant updates, so we filter out when values don't change.
+      remote_flag = 0; 
+    } else {
+      remote_flag = 1;
+      remote_input = temp;
+    }
   }
 }
 
@@ -195,8 +224,6 @@ void motorControl (uint8_t motor_action) { // 0b00000000
   for (byte z = 0; z < 8; z++){
     digitalWrite(motor_enable[z], motor_action >> z & 1);
   }
-  //if(serial_enable) Serial.print("now executing movement: ");
-  //if(serial_enable) Serial.println(motor_action);
 }
 
 uint16_t customTime(){ //divide a second into 32 steps to shrink storage space
