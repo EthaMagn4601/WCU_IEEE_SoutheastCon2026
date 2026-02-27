@@ -2,8 +2,8 @@
 
 
 //change pwm to just be a global speed control and use a map function
-//
-//
+//times saved need to all be relative to the first recorded value. otherwise it doesn't work when repeated multiple times
+//and the stop commands should be shortened then, so that they are always 90ms
 
 
 #include <EEPROM.h>
@@ -58,7 +58,7 @@ uint8_t remote_input = 0; //remote dataword
 
 uint8_t memory_movement[350] = {}; //reserving ram by defining expected size
 uint16_t memory_time[350] = {};
-uint16_t memory_changes = 0;
+uint16_t memory_changes = 1; //makes position 0 in arrays stay 0
 uint16_t total_mem_changes = 0;
 uint16_t stop_stamp = 0;
 
@@ -81,7 +81,7 @@ uint8_t motor_enable[8] = {
 void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
-  if(serial_enable) delay(2000);  // wait for serial port to open
+  if(serial_enable) while(!Serial) delay(10); // wait for serial port to open
   if(serial_enable) Serial.println("booted and receiving");
   if(serial_enable) Serial.print("currently saved movements: ");
   if(serial_enable) loadEEPROM();
@@ -117,30 +117,36 @@ void loop() {
 
   if (remote_flag) {
     remote_flag = 0;
-    if(serial_enable) Serial.print("remote input: ");
-    if(serial_enable) Serial.println(remote_input,BIN);
 
     motorControl(motor_command[remote_input >> 4]); //1 of 16 different movement calls, defined within motor_command array
 
     switch (remote_input & 0b1111) { // 16 postions for special functions
       case 0: // regular movement saving
-        memory_movement[memory_changes] = remote_input;
-        if(memory_changes == 0){
-            memory_time[memory_changes] = 64; //gives the first change a guaranteed 2s wait
-        } else {
-          if (remote_input >> 4 == 0){
-            memory_time[memory_changes] = memory_time[memory_changes - 1] + 6; //makes stops, or 0 move commands only be 180ms long
-          } else {
-            memory_time[memory_changes] = customTime();
-          }
-        }
+      memory_movement[memory_changes] = remote_input;
+      memory_time[memory_changes] = customTime();
+      if (memory_changes == 1){
+        memory_time[memory_changes - 1] = customTime() - 64; //puts start 2s behind first command that's different from 0
+        if(serial_enable) Serial.print("regular operation, movement change number: ");
+        if(serial_enable) Serial.println(memory_changes - 1);
+        if(serial_enable) Serial.print("time of change: ");
+        if(serial_enable) Serial.println(int(31.25 * memory_time[memory_changes - 1]));
+        if(serial_enable) Serial.print("remote input: ");
+        if(serial_enable) Serial.println(remote_input,BIN);
+      }
+
         if(serial_enable) Serial.print("regular operation, movement change number: ");
         if(serial_enable) Serial.println(memory_changes);
+        if(serial_enable) Serial.print("time of change: ");
+        if(serial_enable) Serial.println(int(31.25 * memory_time[memory_changes]));
+        if(serial_enable) Serial.print("remote input: ");
+        if(serial_enable) Serial.println(remote_input,BIN);
         memory_changes++;
         break;
       case 1: //setting repeat flag
+        if(serial_enable) Serial.println("starting repeat");
         repeat_flag = 1;
         stop_stamp = customTime();
+        remote_input = memory_movement[memory_changes - 1];
         total_mem_changes = memory_changes;
         memory_changes = 0;
         break;
@@ -169,16 +175,17 @@ void loop() {
 
   if (repeat_flag){
     if(memory_changes < total_mem_changes){
-      if(serial_enable) Serial.print("ms till next action: ");
-      if(serial_enable) Serial.println(int(31.25 * (memory_time[memory_changes] - (customTime() - stop_stamp))));
-      if(serial_enable) delay(10);
       if (memory_time[memory_changes] < customTime() - stop_stamp){
         if(serial_enable) Serial.print("repeating movement number: ");
         if(serial_enable) Serial.print(memory_changes);
+        if(serial_enable) Serial.print(" of: ");
+        if(serial_enable) Serial.print(total_mem_changes);
         if(serial_enable) Serial.print(" movement action: ");
         if(serial_enable) Serial.println(memory_movement[memory_changes],BIN);
         motorControl(motor_command[memory_movement[memory_changes] >> 4]);
         memory_changes++;
+        if(serial_enable) Serial.print("ms till next action: ");
+        if(serial_enable) Serial.println(int(31.25 * (memory_time[memory_changes] - (customTime() - stop_stamp))));
       }
     } else {
       if(serial_enable) Serial.println("done with repeating action");
