@@ -2,15 +2,6 @@
 #include <Adafruit_VL53L0X.h>
 #include <Wire.h>
 
-/* 
-Need to change out A sensor for a more accurate one and then can work on 
-the deadspace generalization and add that into the if loop that will tell the robot 
-to not get any closer to the wall. This will save us from rubbing and setting us off track!!!
-
-Add feature that disregards data beyond ~2m
-
-*/
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Declare the Two Sensors
 Adafruit_VL53L0X loxA = Adafruit_VL53L0X(); // Leftmost sensor
@@ -30,11 +21,6 @@ const uint8_t ADDR_A = 0x30;
 const uint8_t ADDR_B = 0x31;
 const uint8_t ADDR_C = 0x32;
 const uint8_t ADDR_D = 0x33;
-
-// // A calibration ------- UNCOMMENT IF NEEDED TO USE CALIBRATED A DATA
-// const float A_M = 0.987454f;
-// const float A_B = 0.455201f;
-// const float MM_TO_IN = 0.03937007874f;
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,7 +93,6 @@ void setup() {
   loxD.setMeasurementTimingBudgetMicroSeconds(200000);
 
 } // end void setup
-
 /////////////////////////////////////////////////////////////////////////////////////
 void loop() {
 
@@ -126,33 +111,20 @@ void loop() {
   loxD.rangingTest(&measureD, false);
   delay(20);
 
-  // if (measureA.RangeStatus != 4) { ------- UNCOMMENT IF NEEDED TO USE CALIBRATED A DATA
-  //   float mmA = measureA.RangeMilliMeter * MM_TO_IN;
-  //   float A_corr = A_M * mmA + A_B;
-  //   Serial.print("A: ");
-  //   Serial.print(A_corr, 2);
-  //   Serial.print(" in");
-  // } else {
-  //   Serial.print("A: O.O.R");
-  // }
-
   Serial.print(" | A: ");
   if (measureA.RangeStatus != 4) {
     float mmA = measureB.RangeMilliMeter;
-    float inA = mmA * 0.0393701;
-    Serial.print(inA);
-    Serial.print(" in");
+    Serial.print(mmA);
+    Serial.print(" mm");
   } else {
     Serial.print("O.O.R");
   }
-
   // B Measurement & Serial Print
   Serial.print(" | B: ");
   if (measureB.RangeStatus != 4) {
     float mmB = measureB.RangeMilliMeter;
-    float inB = mmB * 0.0393701;
-    Serial.print(inB);
-    Serial.print(" in");
+    Serial.print(mmB);
+    Serial.print(" mm");
   } else {
     Serial.print("O.O.R");
   }
@@ -160,9 +132,8 @@ void loop() {
   Serial.print(" | C: ");
   if (measureC.RangeStatus != 4) {
     float mmC = measureB.RangeMilliMeter;
-    float inC = mmC * 0.0393701;
-    Serial.print(inC);
-    Serial.print(" in");
+    Serial.print(mmC);
+    Serial.print(" mm");
   } else {
     Serial.print("O.O.R");
   }
@@ -170,14 +141,11 @@ void loop() {
   Serial.print(" | D: ");
   if (measureD.RangeStatus != 4) {
     float mmD = measureB.RangeMilliMeter;
-    float inD = mmD * 0.0393701;
-    Serial.print(inD);
-    Serial.print(" in");
+    Serial.print(mmD);
+    Serial.print(" mm");
   } else {
     Serial.print("O.O.R");
   }
-
   Serial.println();
   delay(100);
-
 } // end void loop
